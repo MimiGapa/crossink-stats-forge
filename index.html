@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CrossInk Stats Forge</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EDEAE2;
+    --paper-dim:#E2DED2;
+    --ink:#1C1B19;
+    --graphite:#57544C;
+    --hairline:#C9C4B8;
+    --teal:#3E6259;
+    --teal-soft:#DCE8E4;
+    --amber:#B8722A;
+    --amber-soft:#F3E3D0;
+    --red:#A8432F;
+    --red-soft:#F3DCD5;
+    --byte-known-bg:#3E6259;
+    --byte-known-fg:#EDEAE2;
+    --byte-zero-bg:#DAD5C7;
+    --byte-zero-fg:#8C887C;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:48px 28px 96px;}
+
+  header{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    padding-bottom:32px;
+    border-bottom:1px solid var(--hairline);
+    margin-bottom:40px;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--graphite);
+  }
+  h1{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:700;
+    font-size:clamp(28px,4vw,44px);
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .sub{color:var(--graphite);font-size:15px;max-width:640px;}
+
+  .disclaimer{
+    display:flex;gap:14px;align-items:flex-start;
+    background:var(--amber-soft);
+    border:1px solid #E3C79A;
+    border-radius:2px;
+    padding:16px 18px;
+    margin-bottom:40px;
+    font-size:13.5px;
+  }
+  .disclaimer .mark{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--amber);flex-shrink:0;}
+  .disclaimer p{margin:0 0 6px;}
+  .disclaimer p:last-child{margin-bottom:0;}
+  .disclaimer b{color:var(--ink);}
+
+  section.card{
+    background:#fff;
+    border:1px solid var(--hairline);
+    border-radius:3px;
+    padding:26px 26px 28px;
+    margin-bottom:28px;
+  }
+  .card h2{
+    font-family:'JetBrains Mono',monospace;
+    font-size:15px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    margin:0 0 4px;
+  }
+  .card .desc{color:var(--graphite);font-size:13px;margin:0 0 20px;}
+
+  /* Dropzone */
+  .dropzone{
+    border:2px dashed var(--hairline);
+    border-radius:4px;
+    padding:36px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+    background:var(--paper-dim);
+  }
+  .dropzone:hover, .dropzone.dragover{
+    border-color:var(--teal);
+    background:var(--teal-soft);
+  }
+  .dropzone .dz-title{
+    font-family:'JetBrains Mono',monospace;
+    font-size:14px;
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  .dropzone .dz-sub{font-size:12.5px;color:var(--graphite);}
+  #file-input{display:none;}
+
+  .upload-item.titled{align-items:flex-start;padding:10px 12px;}
+  .upload-title-block{flex:1;min-width:0;}
+  .upload-title-input{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    font-weight:600;
+    border:1px solid transparent;
+    background:transparent;
+    padding:3px 5px;
+    border-radius:2px;
+    width:100%;
+    color:var(--ink);
+  }
+  .upload-title-input:hover, .upload-title-input:focus{
+    border-color:var(--hairline);
+    background:#fff;
+    outline:none;
+  }
+  .upload-title-input.guessed{
+    background:var(--amber-soft);
+    border-color:#E3C79A;
+  }
+  .upload-title-input.guessed:focus{background:#fff;}
+  .upload-subtext{
+    font-size:11px;
+    color:var(--graphite);
+    padding:2px 5px 0;
+  }
+  .guess-flag{color:var(--amber);}
+
+  .upload-list{margin-top:16px;}
+  .upload-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 12px;
+    border:1px solid var(--hairline);
+    border-radius:2px;
+    background:var(--paper-dim);
+    margin-bottom:6px;
+    font-size:13px;
+  }
+  .upload-item .fname{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:500;
+    flex:1;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    padding:2px 8px;
+    border-radius:10px;
+    flex-shrink:0;
+  }
+  .tag.crossink{background:var(--teal-soft);color:var(--teal);}
+  .tag.cpr{background:#DCE3F3;color:#33518C;}
+  .tag.inx{background:#F3E3D0;color:var(--amber);}
+  .tag.unknown{background:var(--red-soft);color:var(--red);}
+  .upload-item .remove-file{
+    background:none;border:none;color:var(--graphite);
+    cursor:pointer;font-size:15px;padding:2px 6px;flex-shrink:0;
+  }
+  .upload-item .remove-file:hover{color:var(--ink);}
+
+  /* Book merge cards */
+  .book-merge{
+    border:1px solid var(--hairline);
+    border-radius:3px;
+    padding:16px 18px 18px;
+    margin-bottom:14px;
+    background:var(--paper-dim);
+  }
+  .book-merge .bm-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+    gap:10px;
+  }
+  .book-merge .bm-title-input{
+    font-family:'JetBrains Mono',monospace;
+    font-size:14px;
+    font-weight:600;
+    border:1px solid transparent;
+    background:transparent;
+    padding:4px 6px;
+    border-radius:2px;
+    flex:1;
+  }
+  .book-merge .bm-title-input:hover,
+  .book-merge .bm-title-input:focus{
+    border-color:var(--hairline);
+    background:#fff;
+    outline:none;
+  }
+  .conflict-badge{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    background:var(--red-soft);
+    color:var(--red);
+    padding:2px 8px;
+    border-radius:10px;
+    flex-shrink:0;
+  }
+  .source-option{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 10px;
+    border:1px solid var(--hairline);
+    border-radius:2px;
+    background:#fff;
+    margin-bottom:6px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .source-option.selected{border-color:var(--teal);background:var(--teal-soft);}
+  .source-option input[type=radio]{accent-color:var(--teal);}
+  .source-option .so-source{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    text-transform:uppercase;
+    padding:2px 7px;
+    border-radius:10px;
+    flex-shrink:0;
+  }
+  .source-option .so-detail{flex:1;color:var(--graphite);}
+  .source-option .so-detail b{color:var(--ink);font-weight:600;}
+  .confidence-note{font-size:11px;margin-top:2px;}
+  .confidence-note.low{color:var(--amber);}
+  .confidence-note.medium{color:var(--graphite);}
+
+  .manual-fields{display:flex;gap:12px;margin-top:10px;}
+  .manual-fields .field{display:flex;flex-direction:column;gap:4px;}
+  .manual-fields label{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--graphite);font-weight:600;}
+  .manual-fields input{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    padding:7px 9px;
+    border:1px solid var(--hairline);
+    border-radius:2px;
+    width:90px;
+  }
+
+  .bm-remove{
+    background:none;border:none;color:var(--graphite);cursor:pointer;
+    font-size:16px;padding:2px 6px;flex-shrink:0;
+  }
+  .bm-remove:hover{color:var(--ink);}
+
+  button{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:.02em;
+    padding:10px 16px;
+    border-radius:2px;
+    border:1px solid var(--ink);
+    background:var(--ink);
+    color:var(--paper);
+    cursor:pointer;
+    transition:transform .08s ease, opacity .15s ease;
+  }
+  button:hover{opacity:.85;}
+  button:active{transform:translateY(1px);}
+  button.ghost{background:transparent;color:var(--ink);border:1px solid var(--hairline);}
+  button.ghost:hover{border-color:var(--ink);}
+  button.small{padding:6px 10px;font-size:12px;}
+  button:disabled{opacity:.35;cursor:not-allowed;}
+
+  /* Global stats summary */
+  .global-summary{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:12px;
+    margin-bottom:6px;
+  }
+  .gs-tile{
+    background:var(--paper-dim);
+    border:1px solid var(--hairline);
+    border-radius:2px;
+    padding:14px 16px;
+  }
+  .gs-tile .gs-label{
+    font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--graphite);margin-bottom:4px;
+  }
+  .gs-tile .gs-val{
+    font-family:'JetBrains Mono',monospace;
+    font-size:20px;font-weight:700;
+  }
+  .auto-note{font-size:12px;color:var(--graphite);margin-top:10px;}
+
+  /* Output */
+  .output-list{margin-bottom:16px;}
+  .output-item{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 12px;
+    border:1px solid var(--hairline);
+    border-radius:2px;
+    background:var(--paper-dim);
+    margin-bottom:6px;
+    font-size:13px;
+  }
+  .output-item .fname{font-family:'JetBrains Mono',monospace;flex:1;}
+  .output-item .fmeta{color:var(--graphite);font-size:12px;}
+
+  .empty-state{
+    text-align:center;
+    padding:30px 10px;
+    color:var(--graphite);
+    font-size:13.5px;
+  }
+
+  footer{
+    margin-top:40px;
+    padding-top:24px;
+    border-top:1px solid var(--hairline);
+    font-size:12px;
+    color:var(--graphite);
+  }
+  footer a{color:var(--teal);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Xteink X3 / X4 &middot; unofficial community tool</div>
+    <h1>CrossInk Stats Forge</h1>
+    <p class="sub">Upload reading-stats files from CrossInk, cpr-vcodex, and InkX. Pick which source wins when a book shows up more than once. Get back one merged set of CrossInk files.</p>
+  </header>
+
+  <div class="disclaimer">
+    <div class="mark">⚠</div>
+    <div>
+      <p><b>Reverse-engineered, not official.</b> CrossInk's global stats format and the sessions/total-time fields of its per-book <code>v5</code> file are confirmed against real device exports. InkX's format is a low-confidence guess — double check those numbers before trusting them.</p>
+      <p>Back up your device's <code>.crosspoint</code> folder before copying anything back. Only sessions and total time survive the merge — per-day/weekday breakdowns and progress percent aren't part of the confirmed format yet, so they won't carry over.</p>
+    </div>
+  </div>
+
+  <!-- UPLOAD -->
+  <section class="card">
+    <h2>1. Upload your stats files</h2>
+    <p class="desc">Drop in any mix of files: CrossInk per-book <code>stats_v5.bin</code>, InkX <code>statistics.bin</code>, or a cpr-vcodex JSON export. We'll sniff each file's format automatically.</p>
+
+    <div class="dropzone" id="dropzone">
+      <div class="dz-title">Drop files here, or click to choose</div>
+      <div class="dz-sub">Accepts .bin files and cpr-vcodex's JSON export &middot; multiple files at once</div>
+    </div>
+    <input type="file" id="file-input" multiple>
+
+    <div class="upload-list" id="upload-list"></div>
+  </section>
+
+  <!-- MERGE / CONFLICTS -->
+  <section class="card">
+    <h2>2. Review &amp; merge</h2>
+    <p class="desc">Every book found across your uploads, grouped by title. When a book appears in more than one file, choose which numbers to keep — or type your own.</p>
+
+    <div id="book-merge-list">
+      <div class="empty-state">Upload some files above to see books here.</div>
+    </div>
+
+    <button class="ghost small" onclick="addManualBook()">+ Add a book manually</button>
+  </section>
+
+  <!-- GLOBAL STATS (auto) -->
+  <section class="card">
+    <h2>3. Global stats <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--graphite);font-size:11px;">(auto-computed)</span></h2>
+    <p class="desc">The all-time total across every book above — built automatically, nothing to fill in.</p>
+
+    <div class="global-summary" id="global-summary"></div>
+    <p class="auto-note">"Books completed" only counts books we have a confirmed completion signal for (currently: cpr-vcodex imports where the book was marked finished). If a book was actually finished elsewhere, this count may undershoot — you can still fix it on-device later.</p>
+  </section>
+
+  <!-- OUTPUT -->
+  <section class="card">
+    <h2>4. Download</h2>
+    <p class="desc">One <code>global_stats.bin</code> plus one <code>stats.bin</code> per book. Drop the global file at the root of your stats folder, and each book's file into that book's own cache folder.</p>
+
+    <div class="output-list" id="output-list"></div>
+    <button id="download-zip-btn" onclick="downloadAllZip()" disabled>Download all as .zip</button>
+  </section>
+
+  <footer>
+    Formats reverse-engineered from real CrossInk / cpr-vcodex / InkX exports. No affiliation with the CrossInk, CrossPoint, or vCodex projects &mdash; use at your own risk, and always keep a backup of your SD card's <code>.crosspoint</code> folder.
+  </footer>
+
+</div>
+
+<script>
+/* =========================================================
+   STATE
+   ========================================================= */
+let uploads = [];      // [{id, filename, kind, entries:[{title,sessions,seconds,completed,confidence,detail}]}]
+let bookGroups = [];   // [{id, title, options:[{sourceId, sourceKind, sessions, seconds, completed, confidence, label}], chosenIndex, manualOverride:null|{sessions,seconds}}]
+let uploadIdSeq = 0;
+let groupIdSeq = 0;
+
+/* =========================================================
+   FILE HANDLING
+   ========================================================= */
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('file-input');
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+async function handleFiles(fileList){
+  for(const file of fileList){
+    await processFile(file);
+  }
+  fileInput.value = '';
+  renderUploadList();
+  rebuildBookGroups();
+}
+
+async function processFile(file){
+  const id = 'u' + (uploadIdSeq++);
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+
+  let kind = 'unknown';
+  let entries = [];
+
+  // Try JSON first (cpr-vcodex export)
+  const asText = tryDecodeText(bytes);
+  if(asText && looksLikeJson(asText)){
+    try{
+      const json = JSON.parse(asText);
+      if(json && Array.isArray(json.books)){
+        kind = 'cpr';
+        entries = parseCprVcodex(json);
+      }
+    }catch(e){ /* not valid json, fall through */ }
+  }
+
+  if(kind === 'unknown'){
+    if(bytes.length === 73 && bytes[0] === 5){
+      kind = 'crossink';
+      entries = parseCrossInkV5(bytes, file.name);
+    } else if(isInxRichFormat(bytes)){
+      kind = 'inx';
+      entries = parseInxRich(bytes);
+    } else if(bytes.length === 24){
+      kind = 'inx';
+      entries = parseInx(bytes, file.name);
+    } else if(bytes.length === 17 && bytes[0] === 2){
+      kind = 'crossink-global';
+      entries = []; // global file itself isn't a per-book entry; ignore for merging
+    } else {
+      kind = 'unknown';
+      entries = [];
+    }
+  }
+
+  uploads.push({id, filename: file.name, kind, entries, size: bytes.length});
+}
+
+function tryDecodeText(bytes){
+  try{
+    return new TextDecoder('utf-8', {fatal:true}).decode(bytes);
+  }catch(e){
+    return null;
+  }
+}
+function looksLikeJson(text){
+  const t = text.trim();
+  return t.startsWith('{') || t.startsWith('[');
+}
+
+/* ---- format parsers ---- */
+
+// cpr-vcodex JSON export → array of book entries
+function parseCprVcodex(json){
+  return (json.books || []).map(b => ({
+    title: b.title || '(untitled)',
+    titleSource: 'embedded', // real title from the JSON itself, reliable
+    sessions: b.sessions || 0,
+    seconds: Math.round((b.totalReadingMs || 0) / 1000),
+    completed: !!b.completed,
+    confidence: 'high',
+    detail: 'sessions & time confirmed fields'
+  }));
+}
+
+// CrossInk per-book v5 file → single entry. No title is stored in this format,
+// so it has to be guessed from the filename — flagged as such so the upload UI
+// can prompt for a rename when it matters.
+function parseCrossInkV5(bytes, filename){
+  const sessions = bytes[1];
+  const seconds = readU32LE(bytes, 3);
+  const title = titleFromFilename(filename, '-stats_v5.bin', '_stats_v5.bin', 'stats_v5.bin');
+  return [{
+    title,
+    titleSource: 'filename',
+    sessions,
+    seconds,
+    completed: false, // completion flag not in the confirmed byte range
+    confidence: 'high',
+    detail: 'sessions (byte 1) & total time (bytes 3-6) confirmed fields'
+  }];
+}
+
+// Older 24-byte InkX statistics.bin → single entry, low confidence guess, no embedded title
+function parseInx(bytes, filename){
+  const sessions = readU32LE(bytes, 16); // best-guess field
+  const seconds = Math.round(readU32LE(bytes, 8) / 1000); // best-guess field, assumed ms
+  const title = titleFromFilename(filename, '.bin');
+  return [{
+    title,
+    titleSource: 'filename',
+    sessions,
+    seconds,
+    completed: false,
+    confidence: 'low',
+    detail: 'unconfirmed field mapping — double-check these numbers'
+  }];
+}
+
+// Newer, richer InkX per-book file: 4-byte "TATS" magic, a 40-byte numeric
+// header, then three length-prefixed strings (path, title, author). The
+// title/author are read directly out of the file, so those are reliable —
+// the numeric reading-time field is still an unconfirmed guess.
+function isInxRichFormat(bytes){
+  return bytes.length > 44 &&
+    bytes[0]===0x54 && bytes[1]===0x41 && bytes[2]===0x54 && bytes[3]===0x53; // "TATS"
+}
+function parseInxRich(bytes){
+  const sessions = readU32LE(bytes, 16); // matched exactly across two exports of the same book
+  const seconds = Math.round(readU32LE(bytes, 8) / 1000); // confirmed against a real total (~1h55m) on 2026-07-22
+  let title = '(untitled)';
+  try{
+    let offset = 40;
+    // path string — skip over it
+    let len = readU32LE(bytes, offset); offset += 4 + len;
+    // title string
+    len = readU32LE(bytes, offset); offset += 4;
+    title = new TextDecoder('utf-8').decode(bytes.slice(offset, offset+len));
+  }catch(e){ /* fall back to '(untitled)' if the layout doesn't match */ }
+  return [{
+    title,
+    titleSource: 'embedded',
+    sessions,
+    seconds,
+    completed: false,
+    confidence: 'medium',
+    detail: 'title read directly from file (reliable); time field checked against one real total so far — worth a second confirmation on another book'
+  }];
+}
+
+function readU32LE(bytes, offset){
+  return bytes[offset] | (bytes[offset+1]<<8) | (bytes[offset+2]<<16) | (bytes[offset+3]<<24);
+}
+
+function titleFromFilename(filename, ...suffixes){
+  let base = filename;
+  for(const suf of suffixes){
+    if(base.toLowerCase().endsWith(suf.toLowerCase())){
+      base = base.slice(0, base.length - suf.length);
+      break;
+    }
+  }
+  base = base.replace(/[-_]+/g,' ').trim();
+  if(!base){
+    // filename had no title prefix (e.g. a generic "stats_v5.bin") — fall back to
+    // the filename minus extension so the book still shows up and can be renamed/merged by hand
+    base = filename.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ').trim();
+  }
+  return base.replace(/\b\w/g, c => c.toUpperCase()) || 'Untitled book';
+}
+
+/* =========================================================
+   UPLOAD LIST UI
+   ========================================================= */
+function removeUpload(id){
+  uploads = uploads.filter(u => u.id !== id);
+  renderUploadList();
+  rebuildBookGroups();
+}
+
+function kindLabel(kind){
+  return {
+    crossink: 'CrossInk v5',
+    'crossink-global': 'CrossInk global',
+    cpr: 'cpr-vcodex',
+    inx: 'InkX',
+    unknown: 'Unrecognized'
+  }[kind] || kind;
+}
+function kindClass(kind){
+  return {
+    crossink: 'crossink', 'crossink-global':'crossink',
+    cpr: 'cpr', inx: 'inx', unknown: 'unknown'
+  }[kind] || 'unknown';
+}
+
+function renderUploadList(){
+  const el = document.getElementById('upload-list');
+  el.innerHTML = '';
+  uploads.forEach(u => {
+    const row = document.createElement('div');
+    row.className = 'upload-item';
+
+    if(u.kind === 'unknown' || u.kind === 'crossink-global'){
+      const noteText = u.kind === 'unknown'
+        ? "couldn't detect format"
+        : "global file — skipped, not a per-book stat";
+      row.innerHTML = `
+        <span class="tag ${kindClass(u.kind)}">${kindLabel(u.kind)}</span>
+        <span class="fname">${escapeHtml(u.filename)}</span>
+        <span style="color:var(--graphite);font-size:12px;">${noteText}</span>
+        <button class="remove-file" onclick="removeUpload('${u.id}')">&times;</button>
+      `;
+      el.appendChild(row);
+      return;
+    }
+
+    if(u.kind === 'cpr'){
+      row.innerHTML = `
+        <span class="tag ${kindClass(u.kind)}">${kindLabel(u.kind)}</span>
+        <span class="fname">${escapeHtml(u.filename)}</span>
+        <span style="color:var(--graphite);font-size:12px;">${u.entries.length} book${u.entries.length===1?'':'s'} found — titles read from file</span>
+        <button class="remove-file" onclick="removeUpload('${u.id}')">&times;</button>
+      `;
+      el.appendChild(row);
+      return;
+    }
+
+    // Single-entry per-book files (CrossInk v5 / InkX) — these often share a generic
+    // filename across every book, so the title needs to be confirmed/edited right here,
+    // before grouping, or two different books can get mistaken for the same one.
+    const entry = u.entries[0];
+    const guessed = entry.titleSource === 'filename';
+    row.className = 'upload-item titled';
+    row.innerHTML = `
+      <span class="tag ${kindClass(u.kind)}">${kindLabel(u.kind)}</span>
+      <div class="upload-title-block">
+        <input type="text" class="upload-title-input ${guessed ? 'guessed' : ''}"
+          value="${escapeAttr(entry.title)}"
+          oninput="updateUploadTitle('${u.id}', this.value)">
+        <div class="upload-subtext">
+          ${escapeHtml(u.filename)}
+          ${guessed ? ' &middot; <span class="guess-flag">⚠ guessed from filename — rename if wrong</span>' : ' &middot; title read from file'}
+        </div>
+      </div>
+      <button class="remove-file" onclick="removeUpload('${u.id}')">&times;</button>
+    `;
+    el.appendChild(row);
+  });
+}
+
+function updateUploadTitle(uploadId, value){
+  const u = uploads.find(u => u.id === uploadId);
+  if(!u || !u.entries[0]) return;
+  u.entries[0].title = value;
+  u.entries[0].titleSource = 'manual';
+  rebuildBookGroups();
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* =========================================================
+   BOOK GROUPING & MERGE UI
+   ========================================================= */
+function normalizeTitle(t){
+  // used only as a grouping key — strips punctuation so "You, Me & Heather Summers" (JSON)
+  // and "you-me-heather-summers" (filename-derived) are recognized as the same book
+  return (t||'').toLowerCase().trim()
+    .replace(/[^a-z0-9\s]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+
+function rebuildBookGroups(){
+  // preserve manual overrides / chosen index by title where possible
+  const prevByTitle = {};
+  bookGroups.forEach(g => { prevByTitle[normalizeTitle(g.title)] = g; });
+
+  const byTitle = {};        // key -> options[]
+  const displayTitles = {};  // key -> best original-cased title text seen
+  uploads.forEach(u => {
+    u.entries.forEach(entry => {
+      const key = normalizeTitle(entry.title);
+      if(!byTitle[key]) byTitle[key] = [];
+      byTitle[key].push({
+        sourceId: u.id,
+        sourceKind: u.kind,
+        sessions: entry.sessions,
+        seconds: entry.seconds,
+        completed: entry.completed,
+        confidence: entry.confidence,
+        detail: entry.detail
+      });
+      // prefer a cpr-vcodex title (properly punctuated JSON) as the display default;
+      // otherwise keep whatever title text we saw first for this key
+      if(!displayTitles[key] || u.kind === 'cpr'){
+        displayTitles[key] = entry.title;
+      }
+    });
+  });
+
+  const newGroups = [];
+  Object.keys(byTitle).forEach(key => {
+    const options = byTitle[key];
+    const displayTitle = displayTitles[key] || cased(key);
+    const prev = prevByTitle[key];
+    newGroups.push({
+      id: prev ? prev.id : 'g' + (groupIdSeq++),
+      title: prev ? prev.title : displayTitle,
+      manual: false,
+      options,
+      chosenIndex: prev && prev.chosenIndex < options.length ? prev.chosenIndex : 0,
+      manualOverride: prev ? prev.manualOverride : null
+    });
+  });
+
+  // keep manually-added books (no upload options) that still exist
+  bookGroups.filter(g => g.manual).forEach(g => newGroups.push(g));
+
+  bookGroups = newGroups;
+  renderBookMergeList();
+  renderGlobalSummary();
+  renderOutputList();
+}
+
+function cased(key){
+  return key.replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function addManualBook(){
+  bookGroups.push({
+    id: 'g' + (groupIdSeq++),
+    title: '',
+    manual: true,
+    options: [],
+    chosenIndex: 0,
+    manualOverride: {sessions:0, seconds:0}
+  });
+  renderBookMergeList();
+  renderGlobalSummary();
+  renderOutputList();
+}
+
+function removeBookGroup(id){
+  bookGroups = bookGroups.filter(g => g.id !== id);
+  renderBookMergeList();
+  renderGlobalSummary();
+  renderOutputList();
+}
+
+function updateGroupTitle(id, value){
+  const g = bookGroups.find(g => g.id === id);
+  if(g) g.title = value;
+  renderOutputList();
+}
+
+function chooseSource(id, idx){
+  const g = bookGroups.find(g => g.id === id);
+  if(!g) return;
+  g.chosenIndex = idx;
+  g.manualOverride = null;
+  renderBookMergeList();
+  renderGlobalSummary();
+  renderOutputList();
+}
+
+function setManualOverride(id, field, value){
+  const g = bookGroups.find(g => g.id === id);
+  if(!g) return;
+  if(!g.manualOverride) g.manualOverride = currentValues(g);
+  g.manualOverride[field] = value;
+  renderGlobalSummary();
+  renderOutputList();
+}
+
+function currentValues(g){
+  if(g.manualOverride) return {...g.manualOverride};
+  const opt = g.options[g.chosenIndex];
+  return opt ? {sessions: opt.sessions, seconds: opt.seconds, completed: opt.completed} : {sessions:0, seconds:0, completed:false};
+}
+
+function renderBookMergeList(){
+  const el = document.getElementById('book-merge-list');
+  if(bookGroups.length === 0){
+    el.innerHTML = '<div class="empty-state">Upload some files above to see books here.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  bookGroups.forEach(g => {
+    const vals = currentValues(g);
+    const hasConflict = g.options.length > 1;
+    const card = document.createElement('div');
+    card.className = 'book-merge';
+
+    let optionsHtml = '';
+    if(g.options.length){
+      optionsHtml = g.options.map((opt,idx) => `
+        <label class="source-option ${!g.manualOverride && g.chosenIndex===idx ? 'selected':''}">
+          <input type="radio" name="src-${g.id}" ${!g.manualOverride && g.chosenIndex===idx ? 'checked':''}
+            onchange="chooseSource('${g.id}',${idx})">
+          <span class="so-source ${kindClass(opt.sourceKind)}">${kindLabel(opt.sourceKind)}</span>
+          <span class="so-detail">
+            <b>${opt.sessions} sessions</b> &middot; ${fmtDuration(opt.seconds)}
+            ${opt.confidence==='low' ? '<div class="confidence-note low">⚠ low confidence — '+opt.detail+'</div>' : ''}
+            ${opt.confidence==='medium' ? '<div class="confidence-note medium">'+opt.detail+'</div>' : ''}
+          </span>
+        </label>
+      `).join('');
+    }
+
+    card.innerHTML = `
+      <div class="bm-head">
+        <input class="bm-title-input" value="${escapeAttr(g.title)}" placeholder="Book title"
+          oninput="updateGroupTitle('${g.id}', this.value)">
+        ${hasConflict ? '<span class="conflict-badge">found in '+g.options.length+' files</span>' : ''}
+        <button class="bm-remove" onclick="removeBookGroup('${g.id}')" title="Remove">&times;</button>
+      </div>
+
+      ${optionsHtml}
+
+      <div class="manual-fields">
+        <div class="field">
+          <label>Sessions</label>
+          <input type="number" min="0" value="${vals.sessions}"
+            oninput="setManualOverride('${g.id}','sessions',parseInt(this.value)||0)">
+        </div>
+        <div class="field">
+          <label>Hours</label>
+          <input type="number" min="0" value="${Math.floor(vals.seconds/3600)}"
+            oninput="setManualHM('${g.id}', 'hours', parseInt(this.value)||0)">
+        </div>
+        <div class="field">
+          <label>Minutes</label>
+          <input type="number" min="0" max="59" value="${Math.floor((vals.seconds%3600)/60)}"
+            oninput="setManualHM('${g.id}', 'mins', parseInt(this.value)||0)">
+        </div>
+      </div>
+    `;
+    el.appendChild(card);
+  });
+}
+
+function setManualHM(id, which, value){
+  const g = bookGroups.find(g => g.id === id);
+  if(!g) return;
+  const vals = currentValues(g);
+  let h = Math.floor(vals.seconds/3600);
+  let m = Math.floor((vals.seconds%3600)/60);
+  if(which==='hours') h = value; else m = value;
+  setManualOverride(id, 'seconds', h*3600 + m*60);
+}
+
+function escapeAttr(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+}
+function fmtDuration(totalSeconds){
+  const h = Math.floor(totalSeconds/3600);
+  const m = Math.floor((totalSeconds%3600)/60);
+  return `${h}h ${String(m).padStart(2,'0')}m`;
+}
+
+/* =========================================================
+   GLOBAL STATS (AUTO)
+   ========================================================= */
+function computeGlobal(){
+  let sessions=0, seconds=0, completed=0;
+  bookGroups.forEach(g => {
+    const v = currentValues(g);
+    sessions += v.sessions||0;
+    seconds += v.seconds||0;
+    if(v.completed) completed++;
+  });
+  return {sessions, seconds, pages:0, completed, bookCount: bookGroups.length};
+}
+
+function renderGlobalSummary(){
+  const g = computeGlobal();
+  const el = document.getElementById('global-summary');
+  el.innerHTML = `
+    <div class="gs-tile"><div class="gs-label">Books</div><div class="gs-val">${g.bookCount}</div></div>
+    <div class="gs-tile"><div class="gs-label">Sessions</div><div class="gs-val">${g.sessions}</div></div>
+    <div class="gs-tile"><div class="gs-label">Total time</div><div class="gs-val">${fmtDuration(g.seconds)}</div></div>
+    <div class="gs-tile"><div class="gs-label">Completed</div><div class="gs-val">${g.completed}</div></div>
+  `;
+}
+
+/* =========================================================
+   FILE BUILDING
+   ========================================================= */
+function buildGlobalBytes(){
+  const g = computeGlobal();
+  const buf = new Uint8Array(17);
+  buf[0] = 2;
+  writeU32LE(buf,1,g.sessions);
+  writeU32LE(buf,5,g.seconds);
+  writeU32LE(buf,9,g.pages);
+  writeU32LE(buf,13,g.completed);
+  return buf;
+}
+
+function buildBookBytes(sessions, seconds){
+  const buf = new Uint8Array(73);
+  buf[0] = 5;
+  buf[1] = Math.min(255, Math.max(0, sessions));
+  writeU32LE(buf, 3, Math.max(0, seconds));
+  return buf;
+}
+
+function writeU32LE(buf, offset, value){
+  value = Math.max(0, Math.floor(value)) >>> 0;
+  buf[offset]=value&0xFF; buf[offset+1]=(value>>>8)&0xFF;
+  buf[offset+2]=(value>>>16)&0xFF; buf[offset+3]=(value>>>24)&0xFF;
+}
+
+function slugify(s){
+  return (s||'untitled-book').toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'untitled-book';
+}
+
+function outputFiles(){
+  const files = [{filename:'global_stats.bin', bytes: buildGlobalBytes(), meta:'all-time totals'}];
+  bookGroups.forEach(g => {
+    if(!g.title.trim()) return;
+    const v = currentValues(g);
+    files.push({
+      filename: slugify(g.title)+'-stats_v5.bin',
+      bytes: buildBookBytes(v.sessions, v.seconds),
+      meta: `${v.sessions} sessions, ${fmtDuration(v.seconds)}`
+    });
+  });
+  return files;
+}
+
+function renderOutputList(){
+  const files = outputFiles();
+  const el = document.getElementById('output-list');
+  el.innerHTML = '';
+  files.forEach((f,i) => {
+    const row = document.createElement('div');
+    row.className = 'output-item';
+    row.innerHTML = `
+      <span class="fname">${escapeHtml(f.filename)}</span>
+      <span class="fmeta">${escapeHtml(f.meta)}</span>
+      <button class="ghost small" onclick="downloadOne(${i})">Download</button>
+    `;
+    el.appendChild(row);
+  });
+  document.getElementById('download-zip-btn').disabled = files.length <= 1;
+}
+
+function downloadOne(index){
+  const files = outputFiles();
+  const f = files[index];
+  triggerDownload(f.filename, f.bytes);
+}
+
+function triggerDownload(filename, bytes){
+  const blob = new Blob([bytes], {type:'application/octet-stream'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function downloadAllZip(){
+  const files = outputFiles();
+  const zipBytes = buildZip(files);
+  const blob = new Blob([zipBytes], {type:'application/zip'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'crossink-stats-merged.zip';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ---- minimal ZIP writer (STORE / no compression) ----
+   No external library, no network dependency — works from a local file:// page.
+   Good enough for a handful of tiny binary stat files. */
+function buildZip(files){
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  files.forEach(f => {
+    const nameBytes = encoder.encode(f.filename);
+    const data = f.bytes;
+    const crc = crc32(data);
+    const dosTime = 0, dosDate = 0x21; // arbitrary fixed date, not meaningful here
+
+    const localHeader = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(localHeader.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);       // version needed
+    lv.setUint16(6, 0, true);        // flags
+    lv.setUint16(8, 0, true);        // method = store
+    lv.setUint16(10, dosTime, true);
+    lv.setUint16(12, dosDate, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, data.length, true); // compressed size
+    lv.setUint32(22, data.length, true); // uncompressed size
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);       // extra field length
+    localHeader.set(nameBytes, 30);
+
+    localParts.push(localHeader, data);
+
+    const centralHeader = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(centralHeader.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);   // version made by
+    cv.setUint16(6, 20, true);   // version needed
+    cv.setUint16(8, 0, true);    // flags
+    cv.setUint16(10, 0, true);   // method
+    cv.setUint16(12, dosTime, true);
+    cv.setUint16(14, dosDate, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true);
+    cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint16(30, 0, true);   // extra length
+    cv.setUint16(32, 0, true);   // comment length
+    cv.setUint16(34, 0, true);   // disk number
+    cv.setUint16(36, 0, true);   // internal attrs
+    cv.setUint32(38, 0, true);   // external attrs
+    cv.setUint32(42, offset, true); // local header offset
+    centralHeader.set(nameBytes, 46);
+
+    centralParts.push(centralHeader);
+    offset += localHeader.length + data.length;
+  });
+
+  const centralSize = centralParts.reduce((s,p)=>s+p.length, 0);
+  const centralOffset = offset;
+
+  const end = new Uint8Array(22);
+  const ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(4, 0, true);
+  ev.setUint16(6, 0, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, centralSize, true);
+  ev.setUint32(16, centralOffset, true);
+  ev.setUint16(20, 0, true);
+
+  return concatBytes([...localParts, ...centralParts, end]);
+}
+
+function concatBytes(arrays){
+  const total = arrays.reduce((s,a)=>s+a.length,0);
+  const out = new Uint8Array(total);
+  let pos = 0;
+  arrays.forEach(a => { out.set(a, pos); pos += a.length; });
+  return out;
+}
+
+let crcTable = null;
+function crc32(bytes){
+  if(!crcTable){
+    crcTable = new Uint32Array(256);
+    for(let n=0;n<256;n++){
+      let c = n;
+      for(let k=0;k<8;k++){
+        c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      }
+      crcTable[n] = c >>> 0;
+    }
+  }
+  let crc = 0xFFFFFFFF;
+  for(let i=0;i<bytes.length;i++){
+    crc = crcTable[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+/* init */
+renderGlobalSummary();
+renderOutputList();
+</script>
+</body>
+</html>
