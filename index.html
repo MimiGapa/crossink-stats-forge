@@ -89,6 +89,28 @@
   }
   .card .desc{color:var(--graphite);font-size:13px;margin:0 0 20px;}
 
+  .source-guide{
+    margin-bottom:20px;
+  }
+  .sg-row{
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+    padding:10px 0;
+    border-bottom:1px solid var(--hairline);
+    font-size:13px;
+  }
+  .sg-row:last-child{border-bottom:none;}
+  .sg-row .tag{flex-shrink:0;margin-top:1px;}
+  .sg-text{color:var(--graphite);}
+  .sg-text b{color:var(--ink);}
+  .sg-text code{
+    background:var(--paper-dim);
+    padding:1px 5px;
+    border-radius:2px;
+    font-size:12px;
+  }
+
   /* Dropzone */
   .dropzone{
     border:2px dashed var(--hairline);
@@ -349,13 +371,13 @@
   <header>
     <div class="eyebrow">Xteink X3 / X4 &middot; unofficial community tool</div>
     <h1>CrossInk Stats Forge</h1>
-    <p class="sub">Upload reading-stats files from CrossInk, cpr-vcodex, and InkX. Pick which source wins when a book shows up more than once. Get back one merged set of CrossInk files.</p>
+    <p class="sub">Upload reading-stats files from CrossInk, CPR-vCodex, and INX. Choose which source to keep when a book shows up more than once. Get back one merged set of CrossInk files.</p>
   </header>
 
   <div class="disclaimer">
     <div class="mark">⚠</div>
     <div>
-      <p><b>Reverse-engineered, not official.</b> CrossInk's global stats format and the sessions/total-time fields of its per-book <code>v5</code> file are confirmed against real device exports. InkX's format is a low-confidence guess — double check those numbers before trusting them.</p>
+      <p><b>Reverse-engineered, not official.</b> CrossInk's global stats format and the sessions/total-time fields of its per-book <code>v5</code> file are confirmed against real device exports. INX's per-book title is read directly from the file; its reading-time field has been checked against a real total and looks solid.</p>
       <p>Back up your device's <code>.crosspoint</code> folder before copying anything back. Only sessions and total time survive the merge — per-day/weekday breakdowns and progress percent aren't part of the confirmed format yet, so they won't carry over.</p>
     </div>
   </div>
@@ -363,11 +385,26 @@
   <!-- UPLOAD -->
   <section class="card">
     <h2>1. Upload your stats files</h2>
-    <p class="desc">Drop in any mix of files: CrossInk per-book <code>stats_v5.bin</code>, InkX <code>statistics.bin</code>, or a cpr-vcodex JSON export. We'll sniff each file's format automatically.</p>
+    <p class="desc">Each format is detected automatically — just make sure you're grabbing the right file from each firmware:</p>
+
+    <div class="source-guide">
+      <div class="sg-row">
+        <span class="tag crossink">CrossInk</span>
+        <span class="sg-text">The <b>per-book</b> stats file — named <code>stats_v5.bin</code>, found inside that book's own folder (not the all-time <code>global_stats.bin</code>, and not a dated backup export).</span>
+      </div>
+      <div class="sg-row">
+        <span class="tag inx">INX</span>
+        <span class="sg-text">The <b>per-book</b> stats file — named <code>statistics.bin</code>, found inside that book's own folder.</span>
+      </div>
+      <div class="sg-row">
+        <span class="tag cpr">CPR-vCodex</span>
+        <span class="sg-text">The <code>stats_exported</code> file from the firmware's <b>exports</b> folder — this one covers every book in a single file.</span>
+      </div>
+    </div>
 
     <div class="dropzone" id="dropzone">
       <div class="dz-title">Drop files here, or click to choose</div>
-      <div class="dz-sub">Accepts .bin files and cpr-vcodex's JSON export &middot; multiple files at once</div>
+      <div class="dz-sub">Multiple files at once, any mix of the formats above</div>
     </div>
     <input type="file" id="file-input" multiple>
 
@@ -392,7 +429,7 @@
     <p class="desc">The all-time total across every book above — built automatically, nothing to fill in.</p>
 
     <div class="global-summary" id="global-summary"></div>
-    <p class="auto-note">"Books completed" only counts books we have a confirmed completion signal for (currently: cpr-vcodex imports where the book was marked finished). If a book was actually finished elsewhere, this count may undershoot — you can still fix it on-device later.</p>
+    <p class="auto-note">"Books completed" only counts books we have a confirmed completion signal for (currently: CPR-vCodex imports where the book was marked finished). If a book was actually finished elsewhere, this count may undershoot — you can still fix it on-device later.</p>
   </section>
 
   <!-- OUTPUT -->
@@ -405,7 +442,7 @@
   </section>
 
   <footer>
-    Formats reverse-engineered from real CrossInk / cpr-vcodex / InkX exports. No affiliation with the CrossInk, CrossPoint, or vCodex projects &mdash; use at your own risk, and always keep a backup of your SD card's <code>.crosspoint</code> folder.
+    Formats reverse-engineered from real CrossInk / CPR-vCodex / INX exports. No affiliation with the CrossInk, CrossPoint, or vCodex projects &mdash; use at your own risk, and always keep a backup of your SD card's <code>.crosspoint</code> folder.
   </footer>
 
 </div>
@@ -612,8 +649,8 @@ function kindLabel(kind){
   return {
     crossink: 'CrossInk v5',
     'crossink-global': 'CrossInk global',
-    cpr: 'cpr-vcodex',
-    inx: 'InkX',
+    cpr: 'CPR-vCodex',
+    inx: 'INX',
     unknown: 'Unrecognized'
   }[kind] || kind;
 }
