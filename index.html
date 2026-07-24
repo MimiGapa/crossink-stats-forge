@@ -285,6 +285,20 @@
     width:90px;
   }
 
+  .computed-note{
+    font-size:11.5px;
+    color:var(--graphite);
+    margin:10px 2px 0;
+  }
+  .computed-note b{color:var(--ink);}
+  .computed-tag{
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:#9C988C;
+    margin-left:4px;
+  }
+
   .bm-remove{
     background:none;border:none;color:var(--graphite);cursor:pointer;
     font-size:16px;padding:2px 6px;flex-shrink:0;
@@ -355,6 +369,38 @@
     font-size:13.5px;
   }
 
+  #removed-books-list{margin-top:18px;}
+  .removed-head{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--graphite);
+    margin-bottom:8px;
+  }
+  .removed-chip{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:8px 12px;
+    border:1px solid var(--hairline);
+    border-radius:2px;
+    background:var(--paper-dim);
+    margin-bottom:6px;
+    font-size:13px;
+  }
+  .removed-title{
+    font-weight:500;
+    flex:1;
+    text-decoration:line-through;
+    color:var(--graphite);
+  }
+  .removed-meta{
+    font-size:11.5px;
+    color:var(--graphite);
+    flex-shrink:0;
+  }
+
   footer{
     margin-top:40px;
     padding-top:24px;
@@ -377,8 +423,8 @@
   <div class="disclaimer">
     <div class="mark">⚠</div>
     <div>
-      <p><b>Reverse-engineered, not official.</b> CrossInk's global stats format and the sessions/total-time fields of its per-book <code>v5</code> file are confirmed against real device exports. INX's per-book title is read directly from the file; its reading-time field has been checked against a real total and looks solid.</p>
-      <p>Back up your device's <code>.crosspoint</code> folder before copying anything back. Only sessions and total time survive the merge — per-day/weekday breakdowns and progress percent aren't part of the confirmed format yet, so they won't carry over.</p>
+      <p><b>Reverse-engineered, not official.</b> These formats come from studying real device exports, not manufacturer documentation. Confidence varies by field — anything still uncertain is flagged on the book itself, below.</p>
+      <p>Back up your device's <code>.crosspoint</code> folder before copying anything back. Sessions, total time, and pages are written into both the global file and each book's own file.</p>
     </div>
   </div>
 
@@ -421,6 +467,8 @@
     </div>
 
     <button class="ghost small" onclick="addManualBook()">+ Add a book manually</button>
+
+    <div id="removed-books-list"></div>
   </section>
 
   <!-- GLOBAL STATS (auto) -->
@@ -452,7 +500,9 @@
    STATE
    ========================================================= */
 let uploads = [];      // [{id, filename, kind, entries:[{title,sessions,seconds,completed,confidence,detail}]}]
-let bookGroups = [];   // [{id, title, options:[{sourceId, sourceKind, sessions, seconds, completed, confidence, label}], chosenIndex, manualOverride:null|{sessions,seconds}}]
+let bookGroups = [];
+let removedKeys = new Set(); // normalized title keys the user has explicitly dismissed — stay hidden across future uploads
+let removedInfo = [];        // [{key, title, sourceCount}] — removed books that still have matching upload data, for the restore list
 let uploadIdSeq = 0;
 let groupIdSeq = 0;
 
@@ -539,15 +589,28 @@ function looksLikeJson(text){
 
 // cpr-vcodex JSON export → array of book entries
 function parseCprVcodex(json){
-  return (json.books || []).map(b => ({
-    title: b.title || '(untitled)',
-    titleSource: 'embedded', // real title from the JSON itself, reliable
-    sessions: b.sessions || 0,
-    seconds: Math.round((b.totalReadingMs || 0) / 1000),
-    completed: !!b.completed,
-    confidence: 'high',
-    detail: 'sessions & time confirmed fields'
-  }));
+  return (json.books || []).map(b => {
+    const seconds = Math.round((b.totalReadingMs || 0) / 1000);
+    // cpr-vcodex exports avgSecondsPerForwardPage directly — a real named field,
+    // not a guess — so pages/min can be derived from it precisely
+    let pages = null, pagesConfidence = null;
+    if(b.avgSecondsPerForwardPage){
+      const pagesPerMin = 60 / b.avgSecondsPerForwardPage;
+      pages = Math.round(pagesPerMin * (seconds/60));
+      pagesConfidence = 'high';
+    }
+    return {
+      title: b.title || '(untitled)',
+      titleSource: 'embedded', // real title from the JSON itself, reliable
+      sessions: b.sessions || 0,
+      seconds,
+      pages,
+      pagesConfidence,
+      completed: !!b.completed,
+      confidence: 'high',
+      detail: 'sessions & time confirmed fields; pages/min derived from cpr-vcodex\'s own avgSecondsPerForwardPage field'
+    };
+  });
 }
 
 // CrossInk per-book v5 file → single entry. No title is stored in this format,
@@ -556,19 +619,22 @@ function parseCprVcodex(json){
 function parseCrossInkV5(bytes, filename){
   const sessions = bytes[1];
   const seconds = readU32LE(bytes, 3);
+  const pages = readU32LE(bytes, 7); // matched a real avg-session & pages/min value on one export so far
   const title = titleFromFilename(filename, '-stats_v5.bin', '_stats_v5.bin', 'stats_v5.bin');
   return [{
     title,
     titleSource: 'filename',
     sessions,
     seconds,
+    pages,
+    pagesConfidence: 'medium',
     completed: false, // completion flag not in the confirmed byte range
     confidence: 'high',
-    detail: 'sessions (byte 1) & total time (bytes 3-6) confirmed fields'
+    detail: 'sessions & total time (bytes 1, 3-6) confirmed; pages (bytes 7-10) checked against one real export so far'
   }];
 }
 
-// Older 24-byte InkX statistics.bin → single entry, low confidence guess, no embedded title
+// Older 24-byte INX statistics.bin → single entry, low confidence guess, no embedded title
 function parseInx(bytes, filename){
   const sessions = readU32LE(bytes, 16); // best-guess field
   const seconds = Math.round(readU32LE(bytes, 8) / 1000); // best-guess field, assumed ms
@@ -578,13 +644,14 @@ function parseInx(bytes, filename){
     titleSource: 'filename',
     sessions,
     seconds,
+    pages: null,
     completed: false,
     confidence: 'low',
     detail: 'unconfirmed field mapping — double-check these numbers'
   }];
 }
 
-// Newer, richer InkX per-book file: 4-byte "TATS" magic, a 40-byte numeric
+// Newer, richer INX per-book file: 4-byte "TATS" magic, a 40-byte numeric
 // header, then three length-prefixed strings (path, title, author). The
 // title/author are read directly out of the file, so those are reliable —
 // the numeric reading-time field is still an unconfirmed guess.
@@ -593,8 +660,12 @@ function isInxRichFormat(bytes){
     bytes[0]===0x54 && bytes[1]===0x41 && bytes[2]===0x54 && bytes[3]===0x53; // "TATS"
 }
 function parseInxRich(bytes){
-  const sessions = readU32LE(bytes, 16); // matched exactly across two exports of the same book
-  const seconds = Math.round(readU32LE(bytes, 8) / 1000); // confirmed against a real total (~1h55m) on 2026-07-22
+  const totalSeconds = Math.round(readU32LE(bytes, 8) / 1000);
+  const avgMinPerSession = readU32LE(bytes, 16); // exact match against a real device value
+  const totalMinutes = totalSeconds / 60;
+  const sessions = avgMinPerSession > 0 ? Math.round(totalMinutes / avgMinPerSession) : 0; // derived, matched a real device value exactly
+  const pagesGuess = readU32LE(bytes, 12); // best guess — close but not an exact match against pages/min yet
+
   let title = '(untitled)';
   try{
     let offset = 40;
@@ -604,14 +675,17 @@ function parseInxRich(bytes){
     len = readU32LE(bytes, offset); offset += 4;
     title = new TextDecoder('utf-8').decode(bytes.slice(offset, offset+len));
   }catch(e){ /* fall back to '(untitled)' if the layout doesn't match */ }
+
   return [{
     title,
     titleSource: 'embedded',
     sessions,
-    seconds,
+    seconds: totalSeconds,
+    pages: pagesGuess,
+    pagesConfidence: 'low',
     completed: false,
-    confidence: 'medium',
-    detail: 'title read directly from file (reliable); time field checked against one real total so far — worth a second confirmation on another book'
+    confidence: 'high',
+    detail: 'title read from file; time, sessions, and avg min/session all checked against real device values'
   }];
 }
 
@@ -693,7 +767,7 @@ function renderUploadList(){
       return;
     }
 
-    // Single-entry per-book files (CrossInk v5 / InkX) — these often share a generic
+    // Single-entry per-book files (CrossInk v5 / INX) — these often share a generic
     // filename across every book, so the title needs to be confirmed/edited right here,
     // before grouping, or two different books can get mistaken for the same one.
     const entry = u.entries[0];
@@ -732,8 +806,8 @@ function escapeHtml(s){
    BOOK GROUPING & MERGE UI
    ========================================================= */
 function normalizeTitle(t){
-  // used only as a grouping key — strips punctuation so "You, Me & Heather Summers" (JSON)
-  // and "you-me-heather-summers" (filename-derived) are recognized as the same book
+  // used only as a grouping key — strips punctuation so a JSON title like "Some Book, Vol. 2"
+  // and a filename-derived title like "some-book-vol-2" are recognized as the same book
   return (t||'').toLowerCase().trim()
     .replace(/[^a-z0-9\s]/g,' ')
     .replace(/\s+/g,' ')
@@ -756,6 +830,8 @@ function rebuildBookGroups(){
         sourceKind: u.kind,
         sessions: entry.sessions,
         seconds: entry.seconds,
+        pages: entry.pages ?? null,
+        pagesConfidence: entry.pagesConfidence || null,
         completed: entry.completed,
         confidence: entry.confidence,
         detail: entry.detail
@@ -769,9 +845,16 @@ function rebuildBookGroups(){
   });
 
   const newGroups = [];
+  removedInfo = [];
   Object.keys(byTitle).forEach(key => {
     const options = byTitle[key];
     const displayTitle = displayTitles[key] || cased(key);
+
+    if(removedKeys.has(key)){
+      removedInfo.push({key, title: displayTitle, sourceCount: options.length});
+      return;
+    }
+
     const prev = prevByTitle[key];
     newGroups.push({
       id: prev ? prev.id : 'g' + (groupIdSeq++),
@@ -788,6 +871,7 @@ function rebuildBookGroups(){
 
   bookGroups = newGroups;
   renderBookMergeList();
+  renderRemovedList();
   renderGlobalSummary();
   renderOutputList();
 }
@@ -811,10 +895,39 @@ function addManualBook(){
 }
 
 function removeBookGroup(id){
+  const g = bookGroups.find(g => g.id === id);
+  if(g && !g.manual){
+    removedKeys.add(normalizeTitle(g.title));
+  }
   bookGroups = bookGroups.filter(g => g.id !== id);
   renderBookMergeList();
+  renderRemovedList();
   renderGlobalSummary();
   renderOutputList();
+}
+
+function restoreBook(key){
+  removedKeys.delete(key);
+  rebuildBookGroups();
+}
+
+function renderRemovedList(){
+  const el = document.getElementById('removed-books-list');
+  if(!el) return;
+  if(removedInfo.length === 0){
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = `
+    <div class="removed-head">Removed (${removedInfo.length})</div>
+    ${removedInfo.map(r => `
+      <div class="removed-chip">
+        <span class="removed-title">${escapeHtml(r.title)}</span>
+        <span class="removed-meta">${r.sourceCount} file${r.sourceCount===1?'':'s'} available</span>
+        <button class="ghost small" onclick="restoreBook('${r.key}')">Restore</button>
+      </div>
+    `).join('')}
+  `;
 }
 
 function updateGroupTitle(id, value){
@@ -845,7 +958,18 @@ function setManualOverride(id, field, value){
 function currentValues(g){
   if(g.manualOverride) return {...g.manualOverride};
   const opt = g.options[g.chosenIndex];
-  return opt ? {sessions: opt.sessions, seconds: opt.seconds, completed: opt.completed} : {sessions:0, seconds:0, completed:false};
+  return opt
+    ? {sessions: opt.sessions, seconds: opt.seconds, completed: opt.completed, pages: opt.pages ?? null, pagesConfidence: opt.pagesConfidence || null}
+    : {sessions:0, seconds:0, completed:false, pages:null, pagesConfidence:null};
+}
+
+function avgMinPerSession(vals){
+  if(!vals.sessions) return null;
+  return (vals.seconds/60) / vals.sessions;
+}
+function pagesPerMin(vals){
+  if(!vals.pages || !vals.seconds) return null;
+  return vals.pages / (vals.seconds/60);
 }
 
 function renderBookMergeList(){
@@ -863,19 +987,29 @@ function renderBookMergeList(){
 
     let optionsHtml = '';
     if(g.options.length){
-      optionsHtml = g.options.map((opt,idx) => `
+      optionsHtml = g.options.map((opt,idx) => {
+        const optAvg = avgMinPerSession(opt);
+        const optPpm = pagesPerMin(opt);
+        return `
         <label class="source-option ${!g.manualOverride && g.chosenIndex===idx ? 'selected':''}">
           <input type="radio" name="src-${g.id}" ${!g.manualOverride && g.chosenIndex===idx ? 'checked':''}
             onchange="chooseSource('${g.id}',${idx})">
           <span class="so-source ${kindClass(opt.sourceKind)}">${kindLabel(opt.sourceKind)}</span>
           <span class="so-detail">
             <b>${opt.sessions} sessions</b> &middot; ${fmtDuration(opt.seconds)}
+            ${optAvg!==null ? ' &middot; '+optAvg.toFixed(0)+' avg min/session' : ''}
+            ${optPpm!==null ? ' &middot; '+optPpm.toFixed(1)+' pages/min' : ''}
             ${opt.confidence==='low' ? '<div class="confidence-note low">⚠ low confidence — '+opt.detail+'</div>' : ''}
             ${opt.confidence==='medium' ? '<div class="confidence-note medium">'+opt.detail+'</div>' : ''}
+            ${opt.pages!=null && opt.pagesConfidence==='low' ? '<div class="confidence-note low">⚠ pages figure is a best guess, not confirmed</div>' : ''}
+            ${opt.pages!=null && opt.pagesConfidence==='medium' ? '<div class="confidence-note medium">pages figure checked against one real export so far</div>' : ''}
           </span>
         </label>
-      `).join('');
+      `;}).join('');
     }
+
+    const avg = avgMinPerSession(vals);
+    const ppm = pagesPerMin(vals);
 
     card.innerHTML = `
       <div class="bm-head">
@@ -904,6 +1038,11 @@ function renderBookMergeList(){
             oninput="setManualHM('${g.id}', 'mins', parseInt(this.value)||0)">
         </div>
       </div>
+      <p class="computed-note">
+        Avg min/session: <b>${avg!==null ? avg.toFixed(1)+' min' : '—'}</b>
+        <span class="computed-tag">device computes this, nothing to store</span>
+        ${ppm!==null ? ' &middot; Pages/min: <b>'+ppm.toFixed(1)+'</b> <span class="computed-tag">pages written to file</span>' : ''}
+      </p>
     `;
     el.appendChild(card);
   });
@@ -932,24 +1071,29 @@ function fmtDuration(totalSeconds){
    GLOBAL STATS (AUTO)
    ========================================================= */
 function computeGlobal(){
-  let sessions=0, seconds=0, completed=0;
+  let sessions=0, seconds=0, completed=0, pages=0, pagesKnown=false;
   bookGroups.forEach(g => {
     const v = currentValues(g);
     sessions += v.sessions||0;
     seconds += v.seconds||0;
     if(v.completed) completed++;
+    if(v.pages){ pages += v.pages; pagesKnown = true; }
   });
-  return {sessions, seconds, pages:0, completed, bookCount: bookGroups.length};
+  return {sessions, seconds, pages, pagesKnown, completed, bookCount: bookGroups.length};
 }
 
 function renderGlobalSummary(){
   const g = computeGlobal();
+  const avg = g.sessions ? (g.seconds/60)/g.sessions : null;
+  const ppm = g.pagesKnown && g.seconds ? g.pages/(g.seconds/60) : null;
   const el = document.getElementById('global-summary');
   el.innerHTML = `
     <div class="gs-tile"><div class="gs-label">Books</div><div class="gs-val">${g.bookCount}</div></div>
     <div class="gs-tile"><div class="gs-label">Sessions</div><div class="gs-val">${g.sessions}</div></div>
     <div class="gs-tile"><div class="gs-label">Total time</div><div class="gs-val">${fmtDuration(g.seconds)}</div></div>
     <div class="gs-tile"><div class="gs-label">Completed</div><div class="gs-val">${g.completed}</div></div>
+    <div class="gs-tile"><div class="gs-label">Avg min/session</div><div class="gs-val">${avg!==null ? avg.toFixed(1) : '—'}</div></div>
+    <div class="gs-tile"><div class="gs-label">Avg pages/min</div><div class="gs-val">${ppm!==null ? ppm.toFixed(1) : '—'}</div></div>
   `;
 }
 
@@ -967,11 +1111,14 @@ function buildGlobalBytes(){
   return buf;
 }
 
-function buildBookBytes(sessions, seconds){
+function buildBookBytes(sessions, seconds, pages){
   const buf = new Uint8Array(73);
   buf[0] = 5;
   buf[1] = Math.min(255, Math.max(0, sessions));
   writeU32LE(buf, 3, Math.max(0, seconds));
+  if(pages != null){
+    writeU32LE(buf, 7, Math.max(0, pages));
+  }
   return buf;
 }
 
@@ -991,10 +1138,11 @@ function outputFiles(){
   bookGroups.forEach(g => {
     if(!g.title.trim()) return;
     const v = currentValues(g);
+    const ppm = pagesPerMin(v);
     files.push({
       filename: slugify(g.title)+'-stats_v5.bin',
-      bytes: buildBookBytes(v.sessions, v.seconds),
-      meta: `${v.sessions} sessions, ${fmtDuration(v.seconds)}`
+      bytes: buildBookBytes(v.sessions, v.seconds, v.pages),
+      meta: `${v.sessions} sessions, ${fmtDuration(v.seconds)}${ppm!==null ? ', '+ppm.toFixed(1)+' pages/min' : ''}`
     });
   });
   return files;
