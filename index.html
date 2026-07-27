@@ -409,16 +409,87 @@
     color:var(--graphite);
   }
   footer a{color:var(--teal);}
+
+  .tab-nav{
+    display:flex;
+    gap:4px;
+    margin-bottom:32px;
+    border-bottom:1px solid var(--hairline);
+  }
+  .tab-btn{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:.02em;
+    background:none;
+    border:none;
+    border-bottom:2px solid transparent;
+    color:var(--graphite);
+    padding:10px 4px;
+    margin-right:24px;
+    cursor:pointer;
+    border-radius:0;
+  }
+  .tab-btn:hover{opacity:1;color:var(--ink);}
+  .tab-btn.active{color:var(--ink);border-bottom-color:var(--teal);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  .filechip{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 12px;
+    border:1px solid var(--hairline);
+    border-radius:2px;
+    background:var(--paper-dim);
+    margin-bottom:6px;
+    font-size:13px;
+  }
+  .filechip .meta{min-width:0;flex:1;}
+  .filechip .fname{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .filechip .fdetail{font-size:12px;color:var(--graphite);margin-top:2px;}
+  .filechip .fdetail.warn{color:var(--amber);}
+  .filechip .remove{
+    background:none;border:1px solid var(--hairline);border-radius:2px;color:var(--red);
+    font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;padding:5px 9px;flex-shrink:0;
+  }
+  .filechip .remove:hover{background:var(--red-soft);}
+
+  table.results{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px;}
+  table.results th{
+    text-align:left;font-family:'JetBrains Mono',monospace;font-size:10.5px;text-transform:uppercase;
+    letter-spacing:.05em;color:var(--graphite);padding:6px 8px;border-bottom:1px solid var(--hairline);
+  }
+  table.results td{padding:9px 8px;border-bottom:1px solid var(--hairline);vertical-align:top;}
+  table.results tr:last-child td{border-bottom:none;}
+  .snippet{color:var(--graphite);font-style:italic;}
+
+  .hl-log{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--graphite);
+    white-space:pre-wrap;
+    margin-top:12px;
+    line-height:1.7;
+  }
+  .hl-log .ok{color:var(--teal);}
+  .hl-log .bad{color:var(--red);}
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header>
-    <div class="eyebrow">Xteink X3 / X4 &middot; unofficial community tool</div>
-    <h1>CrossInk Stats Forge</h1>
-    <p class="sub">Upload reading-stats files from CrossInk, CPR-vCodex, and INX. Choose which source to keep when a book shows up more than once. Get back one merged set of CrossInk files.</p>
+    <div class="eyebrow">Xteink X3 / X4 &middot; unofficial community tools</div>
+    <h1>CrossInk Toolkit</h1>
+    <p class="sub">Reading-stats merging and highlight migration tools for CrossInk. Supported formats vary by tool — see each tab.</p>
   </header>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('stats')" id="tab-btn-stats">Reading Stats</button>
+    <button class="tab-btn" onclick="switchTab('highlights')" id="tab-btn-highlights">Highlights</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-stats">
 
   <div class="disclaimer">
     <div class="mark">⚠</div>
@@ -492,6 +563,80 @@
   <footer>
     Formats reverse-engineered from real CrossInk / CPR-vCodex / INX exports. No affiliation with the CrossInk, CrossPoint, or vCodex projects &mdash; use at your own risk, and always keep a backup of your SD card's <code>.crosspoint</code> folder.
   </footer>
+
+  </div>
+
+  <div class="tab-panel" id="tab-highlights">
+
+  <section class="card">
+    <h2>1. The book</h2>
+    <p class="desc">The .epub this book's highlights belong to, used to locate each highlighted passage and its chapter.</p>
+    <div class="dropzone" id="hl-drop-epub">
+      <div class="dz-title" id="hl-epub-title">Drop the .epub here, or click to choose</div>
+      <div class="dz-sub" id="hl-epub-sub">Required</div>
+    </div>
+    <input type="file" id="hl-epub-input" accept=".epub" style="display:none;">
+    <div id="hl-epub-filelist"></div>
+
+    <p class="desc" style="margin-top:16px;">Optional: <code>.crosspoint/epub_&lt;id&gt;/book.bin</code> — CrossInk's own cached table of contents. When provided, chapter names come from this file exactly as CrossInk displays them, instead of being read from the epub's HTML.</p>
+    <div class="dropzone" id="hl-drop-bookbin">
+      <div class="dz-title" id="hl-bookbin-title">Drop book.bin here, or click to choose</div>
+      <div class="dz-sub" id="hl-bookbin-sub">Optional</div>
+    </div>
+    <input type="file" id="hl-bookbin-input" accept=".bin" style="display:none;">
+    <div id="hl-bookbin-filelist"></div>
+  </section>
+
+  <section class="card">
+    <h2>2. Existing CrossInk clippings</h2>
+    <p class="desc">If this book already has a <code>.crosspoint/clippings/epub_&lt;id&gt;.bin</code> file, drop it here — new highlights merge in and duplicates are skipped. Otherwise enter a title and author to start a new file.</p>
+    <div class="dropzone" id="hl-drop-base">
+      <div class="dz-title" id="hl-base-title">Drop the existing clippings .bin, or click to choose</div>
+      <div class="dz-sub" id="hl-base-sub">Optional</div>
+    </div>
+    <input type="file" id="hl-base-input" accept=".bin" style="display:none;">
+    <div id="hl-base-filelist"></div>
+    <div class="manual-fields" style="margin-top:14px;">
+      <div class="field">
+        <label>Title</label>
+        <input type="text" id="hl-book-title" style="width:220px;">
+      </div>
+      <div class="field">
+        <label>Author</label>
+        <input type="text" id="hl-book-author" style="width:220px;">
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>3. Highlights to import</h2>
+    <p class="desc">CPR-vCodex-Steroids <code>epub_*.bin</code> clippings files. Multiple files at once.</p>
+    <div class="dropzone" id="hl-drop-sources">
+      <div class="dz-title" id="hl-sources-title">Drop highlight files here, or click to choose</div>
+      <div class="dz-sub" id="hl-sources-sub">Format is detected automatically</div>
+    </div>
+    <input type="file" id="hl-sources-input" accept=".bin" multiple style="display:none;">
+    <div id="hl-sources-filelist"></div>
+
+    <button id="hl-convert-btn" disabled style="margin-top:16px;width:100%;" onclick="hlConvert()">Add book and highlight files to continue</button>
+    <div class="hl-log" id="hl-log"></div>
+  </section>
+
+  <section class="card" id="hl-results-wrap" style="display:none;">
+    <h2>4. Result</h2>
+    <table class="results" id="hl-results-table">
+      <thead><tr><th>Chapter</th><th>Text</th><th>Status</th></tr></thead>
+      <tbody id="hl-results-body"></tbody>
+    </table>
+    <p class="desc" style="margin-top:14px;">Chapter and text are matched exactly against the epub. Page/word position is a best-effort estimate — position data has not been fully consistent even for natively-created highlights, so it may not land precisely.</p>
+    <button id="hl-download-btn" style="margin-top:4px;">Download epub_&lt;id&gt;.bin</button>
+  </section>
+
+  <footer>
+    Formats reverse-engineered from real CrossInk / CPR-vCodex-Steroids exports. No affiliation with the CrossInk, CrossPoint, or vCodex projects &mdash; use at your own risk, and always keep a backup of your SD card's <code>.crosspoint</code> folder.
+  </footer>
+
+  </div>
 
 </div>
 
@@ -1295,6 +1440,541 @@ function crc32(bytes){
 /* init */
 renderGlobalSummary();
 renderOutputList();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+function switchTab(name){
+  document.getElementById('tab-stats').classList.toggle('active', name==='stats');
+  document.getElementById('tab-highlights').classList.toggle('active', name==='highlights');
+  document.getElementById('tab-btn-stats').classList.toggle('active', name==='stats');
+  document.getElementById('tab-btn-highlights').classList.toggle('active', name==='highlights');
+}
+
+/* =========================================================
+   HIGHLIGHTS TAB
+   ========================================================= */
+const hlState = { epub:null, epubBuf:null, bookBin:null, base:null, sources:[] };
+const hlEnc = new TextEncoder();
+const hlDec = new TextDecoder('utf-8');
+const CHARS_PER_PAGE = 480;
+
+function hlNormalize(t){
+  return t.replace(/\u00a0/g,' ')
+          .replace(/[\u2018\u2019]/g,"'")
+          .replace(/[\u201c\u201d]/g,'"')
+          .replace(/\s+/g,' ').trim();
+}
+function hlTokenize(t){
+  return hlNormalize(t).replace(/[\u2014\u2013]/g,' ').split(' ').filter(Boolean);
+}
+
+function hlDetectFormat(buf){
+  const bytes = new Uint8Array(buf);
+  if(bytes[0]===1) return 'CROSSINK_V1';
+  if(bytes[0]===2) return 'STEROIDS_V2';
+  return 'UNKNOWN';
+}
+
+function hlReadCrossInkV1(buf){
+  const dv = new DataView(buf);
+  const bytes = new Uint8Array(buf);
+  const count = bytes[1];
+  let off = 3;
+  function readStr(){
+    const len = dv.getUint32(off, true); off+=4;
+    const s = hlDec.decode(bytes.slice(off, off+len)); off+=len;
+    return s;
+  }
+  const title = readStr(), author = readStr(), epubPath = readStr();
+  const highlights = [];
+  for(let i=0;i<count;i++){
+    const fields10 = [];
+    for(let k=0;k<10;k++){ fields10.push(dv.getInt16(off, true)); off+=2; }
+    const nameRaw = bytes.slice(off, off+48);
+    let nz = nameRaw.indexOf(0); if(nz===-1) nz = nameRaw.length;
+    const chapterName = hlDec.decode(nameRaw.slice(0,nz));
+    off += 48;
+    const textLen = dv.getUint32(off, true); off+=4;
+    const text = hlDec.decode(bytes.slice(off, off+textLen)); off+=textLen;
+    highlights.push({fields10, chapterName, text});
+  }
+  return {title, author, epubPath, highlights};
+}
+
+function hlWriteCrossInkV1(clip){
+  const parts = [];
+  parts.push(new Uint8Array([1, clip.highlights.length, 0]));
+  function strPart(s){
+    const b = hlEnc.encode(s);
+    const len = new Uint8Array(4); new DataView(len.buffer).setUint32(0, b.length, true);
+    return [len, b];
+  }
+  parts.push(...strPart(clip.title));
+  parts.push(...strPart(clip.author));
+  parts.push(...strPart(clip.epubPath));
+  for(const h of clip.highlights){
+    const f = new Uint8Array(20);
+    const fdv = new DataView(f.buffer);
+    for(let k=0;k<10;k++) fdv.setInt16(k*2, h.fields10[k], true);
+    parts.push(f);
+    const nameBytes = hlEnc.encode(h.chapterName);
+    if(nameBytes.length>=48) throw new Error('chapter name too long: '+h.chapterName);
+    const nameBuf = new Uint8Array(48); nameBuf.set(nameBytes);
+    parts.push(nameBuf);
+    const textBytes = hlEnc.encode(h.text);
+    const tlen = new Uint8Array(4); new DataView(tlen.buffer).setUint32(0, textBytes.length, true);
+    parts.push(tlen, textBytes);
+  }
+  const total = parts.reduce((s,p)=>s+p.length,0);
+  const out = new Uint8Array(total);
+  let o=0; for(const p of parts){ out.set(p,o); o+=p.length; }
+  return out.buffer;
+}
+
+function hlReadSteroidsV2(buf){
+  const dv = new DataView(buf);
+  const bytes = new Uint8Array(buf);
+  const count = bytes[1];
+  let off = 15;
+  const highlights = [];
+  for(let i=0;i<count;i++){
+    const fields10 = [];
+    for(let k=0;k<10;k++){ fields10.push(dv.getInt16(off, true)); off+=2; }
+    off += 4; // unidentified field, not used
+    const nameRaw = bytes.slice(off, off+48);
+    let nz = nameRaw.indexOf(0); if(nz===-1) nz = nameRaw.length;
+    const chapterName = hlDec.decode(nameRaw.slice(0,nz));
+    off += 48;
+    const textLen = dv.getUint32(off, true); off+=4;
+    const text = hlDec.decode(bytes.slice(off, off+textLen)); off+=textLen;
+    highlights.push({fields10, chapterName, text});
+  }
+  return {highlights};
+}
+
+function hlReadBookBin(buf){
+  const dv = new DataView(buf);
+  const bytes = new Uint8Array(buf);
+  let off = 0;
+  if(bytes.length>=4 && bytes[0]===0xFF && bytes[1]===0x43 && bytes[2]===0x58 && bytes[3]===0x42){
+    off = 4;
+  }
+  const version = bytes[off]; off += 1;
+  const lutOffset = dv.getUint32(off, true); off += 4;
+  const spineCount = dv.getUint16(off, true); off += 2;
+  const tocCount = dv.getUint16(off, true); off += 2;
+
+  function readStr(o){
+    const len = dv.getUint32(o, true);
+    const s = hlDec.decode(bytes.slice(o+4, o+4+len));
+    return [s, o+4+len];
+  }
+
+  let title, author;
+  [title, off] = readStr(off);
+  [author, off] = readStr(off);
+  while(off < lutOffset){
+    let discarded;
+    [discarded, off] = readStr(off);
+  }
+  if(off !== lutOffset){
+    throw new Error(`book.bin parse drift at ${off}, expected ${lutOffset} (version ${version})`);
+  }
+
+  const spineLut = [];
+  for(let i=0;i<spineCount;i++){ spineLut.push(dv.getUint32(off, true)); off+=4; }
+  const tocLut = [];
+  for(let i=0;i<tocCount;i++){ tocLut.push(dv.getUint32(off, true)); off+=4; }
+
+  const spines = [];
+  for(let i=0;i<spineCount;i++){
+    let o = spineLut[i];
+    let href;
+    [href, o] = readStr(o);
+    const cumulativeSize = dv.getUint32(o, true); o+=4;
+    const tocIndex = dv.getInt16(o, true); o+=2;
+    spines.push({href, cumulativeSize, tocIndex});
+  }
+
+  const toc = [];
+  for(let i=0;i<tocCount;i++){
+    let o = tocLut[i];
+    let ttitle, thref, anchor;
+    [ttitle, o] = readStr(o);
+    [thref, o] = readStr(o);
+    [anchor, o] = readStr(o);
+    const level = bytes[o]; o+=1;
+    const spineIndex = dv.getInt16(o, true); o+=2;
+    toc.push({title:ttitle, href:thref, anchor, level, spineIndex});
+  }
+
+  return {title, author, spines, toc};
+}
+
+function hlTextWithSpaces(node){
+  let out = '';
+  node.childNodes.forEach(child=>{
+    if(child.nodeType===Node.TEXT_NODE) out += child.nodeValue;
+    else if(child.nodeType===Node.ELEMENT_NODE) out += ' ' + hlTextWithSpaces(child) + ' ';
+  });
+  return out;
+}
+
+async function hlLoadEpubModel(buf, bookBin){
+  const zip = await JSZip.loadAsync(buf);
+
+  let spineHrefs;
+  let tocTitleForSpine = null;
+
+  if(bookBin){
+    spineHrefs = bookBin.spines.map(s => s.href);
+    tocTitleForSpine = bookBin.spines.map(s =>
+      s.tocIndex>=0 && bookBin.toc[s.tocIndex] ? bookBin.toc[s.tocIndex].title : null
+    );
+  } else {
+    const containerXml = await zip.file('META-INF/container.xml').async('string');
+    const containerDoc = new DOMParser().parseFromString(containerXml, 'application/xml');
+    const opfPath = containerDoc.querySelector('rootfile').getAttribute('full-path');
+    const baseDir = opfPath.includes('/') ? opfPath.substring(0, opfPath.lastIndexOf('/')+1) : '';
+
+    const opfXml = await zip.file(opfPath).async('string');
+    const opfDoc = new DOMParser().parseFromString(opfXml, 'application/xml');
+    const manifest = {};
+    opfDoc.querySelectorAll('manifest > item').forEach(el=>{
+      manifest[el.getAttribute('id')] = el.getAttribute('href');
+    });
+    spineHrefs = [];
+    opfDoc.querySelectorAll('spine > itemref').forEach(el=>{
+      const href = manifest[el.getAttribute('idref')];
+      if(href) spineHrefs.push(baseDir + href);
+    });
+  }
+
+  const chapters = [];
+  let lastBase = null, lastTitle = null;
+  for(let i=0;i<spineHrefs.length;i++){
+    const rawHref = spineHrefs[i];
+    const href = rawHref.split('#')[0];
+    const base = href.replace(/__ci_section_\d+(?=\.[^./]+$)/, '');
+
+    let file = zip.file(href);
+    if(!file){
+      const b = href.split('/').pop();
+      const match = Object.keys(zip.files).find(p=>p.endsWith('/'+b) || p===b);
+      if(match) file = zip.file(match);
+    }
+    if(!file){ chapters.push({spineIndex:i+1, title:lastTitle, paragraphs:[]}); continue; }
+
+    const html = await file.async('string');
+    let doc;
+    try{ doc = new DOMParser().parseFromString(html, 'application/xhtml+xml'); }
+    catch(e){ doc = null; }
+    if(!doc || doc.querySelector('parsererror')){
+      doc = new DOMParser().parseFromString(html, 'text/html');
+    }
+
+    let title = null;
+    if(tocTitleForSpine){
+      title = tocTitleForSpine[i];
+    } else {
+      const heading = doc.querySelector('h1,h2,h3,h4,h5,h6');
+      if(heading && heading.textContent.trim()) title = heading.textContent;
+      if(!title){
+        const img = doc.querySelector('img[alt]');
+        if(img && /chapter/i.test(img.getAttribute('alt'))) title = img.getAttribute('alt');
+      }
+      if(!title){
+        const titleTag = doc.querySelector('title');
+        if(titleTag && titleTag.textContent.trim()) title = titleTag.textContent;
+      }
+    }
+    if(title) title = title.replace(/\s+/g,' ').trim();
+    if(!title && base===lastBase) title = lastTitle;
+    lastBase = base; lastTitle = title;
+
+    const paragraphs = [];
+    doc.querySelectorAll('p').forEach(p=>{
+      const text = hlNormalize(hlTextWithSpaces(p));
+      if(text) paragraphs.push(text);
+    });
+
+    chapters.push({spineIndex:i+1, title, paragraphs});
+  }
+  return chapters;
+}
+
+function hlFindPosition(chapters, targetText){
+  const targetNorm = hlNormalize(targetText);
+  const nChars = targetNorm.length;
+  for(const ch of chapters){
+    const fullText = hlNormalize(ch.paragraphs.join(' '));
+    const idx = fullText.indexOf(targetNorm);
+    if(idx>=0){
+      return {
+        chapterIndex0: ch.spineIndex-1,
+        chapterTitle: ch.title || 'Chapter',
+        absoluteCharIndex: idx,
+        nChars,
+        chapterCharTotal: fullText.length,
+        chapterFullText: fullText
+      };
+    }
+  }
+  return null;
+}
+
+function hlSetupDrop(dropId, inputId, onFiles, multiple){
+  const drop = document.getElementById(dropId);
+  const input = document.getElementById(inputId);
+  drop.addEventListener('click', ()=>input.click());
+  drop.addEventListener('dragover', e=>{e.preventDefault(); drop.classList.add('dragover');});
+  drop.addEventListener('dragleave', ()=>drop.classList.remove('dragover'));
+  drop.addEventListener('drop', e=>{
+    e.preventDefault(); drop.classList.remove('dragover');
+    onFiles(multiple ? Array.from(e.dataTransfer.files) : [e.dataTransfer.files[0]]);
+  });
+  input.addEventListener('change', ()=>{
+    onFiles(multiple ? Array.from(input.files) : [input.files[0]]);
+    input.value = '';
+  });
+}
+
+function hlRefreshGoButton(){
+  const btn = document.getElementById('hl-convert-btn');
+  const ready = hlState.epub && hlState.sources.length>0 &&
+    (hlState.base || (document.getElementById('hl-book-title').value.trim() && document.getElementById('hl-book-author').value.trim()));
+  btn.disabled = !ready;
+  btn.textContent = ready ? `Convert ${hlState.sources.length} file${hlState.sources.length===1?'':'s'}` : 'Add book and highlight files to continue';
+}
+
+function hlDescribeBinFile(buf){
+  try{
+    const fmt = hlDetectFormat(buf);
+    if(fmt==='CROSSINK_V1'){
+      const clip = hlReadCrossInkV1(buf);
+      return {text:`"${clip.title}" — ${clip.author} · ${clip.highlights.length} highlight${clip.highlights.length===1?'':'s'} saved`, warn:false};
+    }
+    if(fmt==='STEROIDS_V2'){
+      const v2 = hlReadSteroidsV2(buf);
+      const chNames = [...new Set(v2.highlights.map(h=>h.chapterName).filter(Boolean))];
+      return {text:`${v2.highlights.length} highlight${v2.highlights.length===1?'':'s'}, from: ${chNames.join(', ')||'—'}`, warn:false};
+    }
+    return {text:'could not identify this file\'s format', warn:true};
+  } catch(e){
+    return {text:'could not read this file: '+e.message, warn:true};
+  }
+}
+
+function hlRenderEpubChip(){
+  const el = document.getElementById('hl-epub-filelist');
+  document.getElementById('hl-epub-title').textContent = hlState.epub ? hlState.epub.name : 'Drop the .epub here, or click to choose';
+  document.getElementById('hl-epub-sub').textContent = hlState.epub ? 'epub loaded' : 'Required';
+  if(!hlState.epub){ el.innerHTML=''; return; }
+  el.innerHTML = `<div class="filechip"><div class="meta"><div class="fname">${hlState.epub.name}</div></div><button class="remove" data-remove="epub">&times;</button></div>`;
+}
+function hlRenderBookBinChip(){
+  const el = document.getElementById('hl-bookbin-filelist');
+  document.getElementById('hl-bookbin-title').textContent = hlState.bookBin ? hlState.bookBin.file.name : 'Drop book.bin here, or click to choose';
+  document.getElementById('hl-bookbin-sub').textContent = hlState.bookBin ? 'book.bin loaded' : 'Optional';
+  if(!hlState.bookBin){ el.innerHTML=''; return; }
+  const info = hlState.bookBin.info || {text:'reading…', warn:false};
+  el.innerHTML = `<div class="filechip"><div class="meta"><div class="fname">${hlState.bookBin.file.name}</div>${info.text?`<div class="fdetail${info.warn?' warn':''}">${info.text}</div>`:''}</div><button class="remove" data-remove="bookbin">&times;</button></div>`;
+}
+function hlRenderBaseChip(){
+  const el = document.getElementById('hl-base-filelist');
+  document.getElementById('hl-base-title').textContent = hlState.base ? hlState.base.file.name : 'Drop the existing clippings .bin, or click to choose';
+  document.getElementById('hl-base-sub').textContent = hlState.base ? 'existing clippings loaded' : 'Optional';
+  if(!hlState.base){ el.innerHTML=''; return; }
+  const info = hlState.base.info || {text:'reading…', warn:false};
+  el.innerHTML = `<div class="filechip"><div class="meta"><div class="fname">${hlState.base.file.name}</div>${info.text?`<div class="fdetail${info.warn?' warn':''}">${info.text}</div>`:''}</div><button class="remove" data-remove="base">&times;</button></div>`;
+}
+function hlRenderSourcesList(){
+  const el = document.getElementById('hl-sources-filelist');
+  document.getElementById('hl-sources-title').textContent = hlState.sources.length ? hlState.sources.length + ' file(s) queued' : 'Drop highlight files here, or click to choose';
+  el.innerHTML = hlState.sources.map((s,i)=>{
+    const info = s.info || {text:'reading…', warn:false};
+    return `<div class="filechip"><div class="meta"><div class="fname">${s.file.name}</div>${info.text?`<div class="fdetail${info.warn?' warn':''}">${info.text}</div>`:''}</div><button class="remove" data-remove-idx="${i}">&times;</button></div>`;
+  }).join('');
+}
+
+document.getElementById('hl-epub-filelist').addEventListener('click', e=>{
+  if(e.target.dataset.remove==='epub'){ hlState.epub=null; hlState.epubBuf=null; hlRenderEpubChip(); hlRefreshGoButton(); }
+});
+document.getElementById('hl-bookbin-filelist').addEventListener('click', e=>{
+  if(e.target.dataset.remove==='bookbin'){ hlState.bookBin=null; hlRenderBookBinChip(); }
+});
+document.getElementById('hl-base-filelist').addEventListener('click', e=>{
+  if(e.target.dataset.remove==='base'){ hlState.base=null; hlRenderBaseChip(); hlRefreshGoButton(); }
+});
+document.getElementById('hl-sources-filelist').addEventListener('click', e=>{
+  if(e.target.dataset.removeIdx!==undefined){
+    hlState.sources.splice(parseInt(e.target.dataset.removeIdx,10), 1);
+    hlRenderSourcesList(); hlRefreshGoButton();
+  }
+});
+
+hlSetupDrop('hl-drop-epub','hl-epub-input', async (files)=>{
+  const f = files[0]; if(!f) return;
+  hlState.epub = f;
+  hlState.epubBuf = await f.arrayBuffer();
+  hlRenderEpubChip();
+  hlRefreshGoButton();
+}, false);
+
+hlSetupDrop('hl-drop-bookbin','hl-bookbin-input', async (files)=>{
+  const f = files[0]; if(!f) return;
+  const buf = await f.arrayBuffer();
+  let info;
+  try{
+    const parsed = hlReadBookBin(buf);
+    info = {text:`"${parsed.title}" — ${parsed.spines.length} spine entries, ${parsed.toc.length} TOC entries`, warn:false};
+  } catch(e){
+    info = {text:'could not parse this file: '+e.message, warn:true};
+  }
+  hlState.bookBin = { file:f, buf, info };
+  hlRenderBookBinChip();
+}, false);
+
+hlSetupDrop('hl-drop-base','hl-base-input', async (files)=>{
+  const f = files[0]; if(!f) return;
+  const buf = await f.arrayBuffer();
+  hlState.base = { file:f, buf, info: hlDescribeBinFile(buf) };
+  hlRenderBaseChip();
+  hlRefreshGoButton();
+}, false);
+
+hlSetupDrop('hl-drop-sources','hl-sources-input', async (files)=>{
+  for(const f of files){
+    const buf = await f.arrayBuffer();
+    hlState.sources.push({ file:f, buf, info: hlDescribeBinFile(buf) });
+  }
+  hlRenderSourcesList();
+  hlRefreshGoButton();
+}, true);
+
+document.getElementById('hl-book-title').addEventListener('input', hlRefreshGoButton);
+document.getElementById('hl-book-author').addEventListener('input', hlRefreshGoButton);
+
+function hlLog(msg, cls){
+  const el = document.getElementById('hl-log');
+  const line = document.createElement('div');
+  if(cls) line.className = cls;
+  line.textContent = msg;
+  el.appendChild(line);
+}
+
+async function hlConvert(){
+  document.getElementById('hl-log').innerHTML = '';
+  document.getElementById('hl-results-wrap').style.display='none';
+  const btn = document.getElementById('hl-convert-btn');
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = 'Reading epub…';
+
+  try{
+    let bookBinParsed = null;
+    if(hlState.bookBin){
+      try{ bookBinParsed = hlReadBookBin(hlState.bookBin.buf); }
+      catch(e){ hlLog('could not parse book.bin, falling back to epub-derived chapter titles: '+e.message); }
+    }
+    const chapters = await hlLoadEpubModel(hlState.epubBuf, bookBinParsed);
+    hlLog(`epub parsed: ${chapters.length} spine items`, 'ok');
+
+    let clip;
+    if(hlState.base){
+      clip = hlReadCrossInkV1(hlState.base.buf);
+      hlLog(`loaded existing clippings: "${clip.title}" — ${clip.highlights.length} highlight(s) already saved`);
+    } else {
+      const title = document.getElementById('hl-book-title').value.trim();
+      const author = document.getElementById('hl-book-author').value.trim();
+      clip = {title, author, epubPath: '/books/'+hlState.epub.name, highlights:[]};
+      hlLog(`starting a new clippings file for "${title}"`);
+    }
+
+    const existingTexts = new Set(clip.highlights.map(h=>hlNormalize(h.text)));
+    const results = [];
+
+    const incoming = [];
+    for(const src of hlState.sources){
+      const fmt = hlDetectFormat(src.buf);
+      if(fmt==='STEROIDS_V2'){
+        const v2 = hlReadSteroidsV2(src.buf);
+        for(const h of v2.highlights) incoming.push({text: h.text, label: src.file.name});
+      } else if(fmt==='CROSSINK_V1'){
+        const v1 = hlReadCrossInkV1(src.buf);
+        for(const h of v1.highlights) incoming.push({text: h.text, label: src.file.name});
+      } else {
+        hlLog(`could not identify format of ${src.file.name} — skipped`, 'bad');
+      }
+    }
+
+    for(const item of incoming){
+      const norm = hlNormalize(item.text);
+      const snippet = item.text.length>70 ? item.text.slice(0,70)+'…' : item.text;
+
+      if(existingTexts.has(norm)){
+        results.push({chapter:'—', snippet, status:'already present', cls:'unknown', order:Infinity});
+        continue;
+      }
+
+      const pos = hlFindPosition(chapters, item.text);
+      if(!pos){
+        results.push({chapter:'—', snippet, status:'text not found in epub', cls:'unknown', order:Infinity});
+        hlLog(`could not locate "${snippet}"`, 'bad');
+        continue;
+      }
+
+      const startChar = pos.absoluteCharIndex;
+      const endChar = startChar + pos.nChars - 1;
+      const startPage = Math.floor(startChar / CHARS_PER_PAGE);
+      const endPage = Math.floor(endChar / CHARS_PER_PAGE);
+      const chapterPageCount = Math.floor(pos.chapterCharTotal / CHARS_PER_PAGE);
+      const startWordInPage = hlTokenize(pos.chapterFullText.slice(startPage*CHARS_PER_PAGE, startChar)).length;
+      const endWordInPage = hlTokenize(pos.chapterFullText.slice(endPage*CHARS_PER_PAGE, endChar+1)).length - 1;
+
+      const fields10 = [
+        pos.chapterIndex0, startPage, endPage, chapterPageCount,
+        startWordInPage, endWordInPage, startWordInPage, endWordInPage, startChar, 0
+      ];
+
+      clip.highlights.push({fields10, chapterName: pos.chapterTitle, text: item.text});
+      existingTexts.add(norm);
+
+      results.push({chapter: pos.chapterTitle, snippet, status: 'matched', cls:'crossink', order: pos.chapterIndex0*1e6 + startPage*1e3 + startWordInPage});
+      hlLog(`${item.label}: ${pos.chapterTitle}, page ~${startPage}`, 'ok');
+    }
+
+    clip.highlights.sort((a,b)=>
+      (a.fields10[0]-b.fields10[0]) || (a.fields10[1]-b.fields10[1]) || (a.fields10[4]-b.fields10[4])
+    );
+    results.sort((a,b)=> a.order - b.order);
+
+    const outBuf = hlWriteCrossInkV1(clip);
+    const idMatch = (hlState.base ? hlState.base.file.name : '').match(/epub_(\d+)\.bin/);
+    const outName = idMatch ? `epub_${idMatch[1]}.bin` : `epub_${Math.floor(Math.random()*9000000000+1000000000)}.bin`;
+    document.getElementById('hl-download-btn').onclick = () => triggerDownload(outName, new Uint8Array(outBuf));
+    document.getElementById('hl-download-btn').textContent = `Download ${outName}`;
+
+    const tbody = document.getElementById('hl-results-body');
+    tbody.innerHTML = '';
+    for(const r of results){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${r.chapter}</td><td class="snippet">"${r.snippet}"</td><td><span class="tag ${r.cls}">${r.status}</span></td>`;
+      tbody.appendChild(tr);
+    }
+    document.getElementById('hl-results-wrap').style.display='block';
+    hlLog(`done — ${clip.highlights.length} total highlight(s) in the output file`, 'ok');
+
+  } catch(err){
+    hlLog('error: '+err.message, 'bad');
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+    hlRefreshGoButton();
+  }
+}
 </script>
 </body>
 </html>
